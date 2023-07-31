@@ -1,0 +1,61 @@
+body {
+    font-size: 18px;
+  }
+
+  #main {
+    background-color: #e0f4fb;
+    padding: 10px;
+  }
+
+  #description h1{
+    color: #a61e57;
+    font-size: 24px;
+  }
+
+  #title h1{
+    color: rgb(44, 57, 116);
+    font-size: 24px;
+  }
+
+  .captcha_button {
+    color: #fff5ea;
+    background-color: #a61e57;
+    border: none;
+    border-radius: 15px;
+    font-size: 18px;
+    width: 250px;
+    height: 40px;
+  }
+
+  .captcha_button:hover{
+    background-color: #a61e57;
+  }
+
+  #notification {
+    color:#696969;
+    font-size:small;
+  }
+
+  #captcha {
+    display: none;
+  }
+
+  #canvas_wrapper {
+    position: relative;
+  }
+
+  #captcha_result {
+    display: none;
+    position:absolute;
+    font-size: 16px;
+    width: 300px;
+    top: 142px;
+    left: 0px;
+    text-align: center;
+  }
+
+  #square {
+	width: 40px;
+	height: 30px;
+	background-color:unset;
+  }

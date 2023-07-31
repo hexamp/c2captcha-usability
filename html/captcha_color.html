@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/spectrum-colorpicker2/dist/spectrum.min.js"></script>
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/spectrum-colorpicker2/dist/spectrum.min.css">
+<link rel="stylesheet" type="text/css" href="./css/main.css">
+
+<title>Color-Constancy-CAPTCHA</title>
+
+</head>
+<body>
+    <div id="main">
+      <div id="description">
+        <h1>[実験本番CAPTCHA]</h1>
+        <p>🌟　このCAPTCHAでは、CAPTCHA画像の元の色を推定する必要があります。 </p>
+        <p>🌟　指定された場所に合った範囲の色を回答してください。</p>
+        <h1>[ご注意]</h1>
+        <ul>
+          <li>
+            色を選択し終えたら、「回答」のボタンも忘れないでクリックしてください。
+		  </li>
+		</ul>
+      </div>
+
+	  <p><button type="button" name="start" class="captcha_button" id="start_button">CAPTCHA 開始</button></p>
+      <div hidden id ="captcha">
+        <div id ="canvas_wrapper" width="300" height="300">
+          <canvas id="captcha_canvas" width="300" height="300"></canvas>
+          <span id="captcha_result"></span>
+		</div>
+        <form name ="captcha_form" action="" method="post">
+            <input id ="picker" name="color">
+            <input type="hidden" name="objX" id="objX" value='' />
+            <input type="hidden" name="objY" id="objY" value='' />
+            <input type="hidden" name="objW" id="objW" value='' />
+            <input type="hidden" name="objH" id="objH" value='' />
+        </form>
+        <p><button type="button" name="answer" class ="captcha_button" id="answer_button">Send</button></p>
+      </div>
+
+    </div>
+    <script src="./js/captcha_color.js"></script>
+
+</body>
+
+</html>

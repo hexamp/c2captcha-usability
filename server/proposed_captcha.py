@@ -1,0 +1,137 @@
+from fastapi import FastAPI
+from starlette.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import List
+
+import numpy as np
+import color
+import uuid
+import datetime
+import cv2
+import pathlib
+import random
+import json
+from base64 import b64encode
+
+app = FastAPI()
+
+app.add_middleware(
+	CORSMiddleware,
+	allow_origins=["*"],
+	allow_credentials=True,
+	allow_methods=["POST"],
+	allow_headers=["*"]
+)
+
+class Data(BaseModel):
+	uuid : str
+	color : List[int]
+	position : List[int]
+
+
+class CAPTCHA_Server():
+	def __init__(self, challenge_dir="./challenges/challenge_origin/"):
+		dir = pathlib.Path(challenge_dir)
+		self.captcha_image_dir = dir.joinpath("images")
+		self.captcha_images = list(self.captcha_image_dir.iterdir())
+		random.shuffle(self.captcha_images)
+		self.captcha_mapping = {}
+		self.captcha_answer_dir = dir.joinpath("answers")
+		self.captcha_result_dir = dir.joinpath("proposed","results")
+		if not self.captcha_result_dir.exists():
+			self.captcha_result_dir.mkdir(parents=True)
+
+		self.image_ext = "jpg"
+		self.answer_dict = self.getAnswerDict(self.captcha_answer_dir)
+
+	def sendChallenge(self):
+		img_path = self.captcha_images.pop()
+		if len(self.captcha_images) == 0:
+			self.captcha_images = list(self.captcha_image_dir.iterdir())
+			random.shuffle(self.captcha_images)
+		with open(str(img_path), 'rb') as f:
+			blob_data = b64encode(f.read())
+			captcha_id = str(uuid.uuid4())
+			img_name = img_path.name
+
+			answer_color = self.getAnswerColor(img_path.name)
+			self.captcha_mapping[captcha_id] = (datetime.datetime.now(), img_name)
+
+			return { "uuid" : captcha_id, 
+					"blob" : blob_data.decode('utf-8'),
+					"img_num" : img_name,
+					"color" : answer_color.getColorCode()}
+		
+	def validateResponse(self, data:Data):
+		if data.uuid not in self.captcha_mapping:
+			return {"result" : "99.999"}
+	
+		(timestamp, img_name) = self.captcha_mapping.pop(data.uuid)
+		current_time = datetime.datetime.now()
+		diff = current_time - timestamp
+		challenge_id = img_name
+		
+		if diff.seconds > 60.0:
+			return {"result" : "99.999"}
+
+		delta = self.validateAnswer(data.position, challenge_id)
+		result_file = str(self.captcha_result_dir.joinpath(f"{data.uuid}.txt"))
+		self.recordResult(result_file, challenge_id, data, delta, diff)
+		return {"result" : delta}
+	
+	def validateAnswer(self, position, challenge_id):
+		x1,y1,x2,y2 = position
+		answer_x1,answer_y1,answer_x2,answer_y2  = self.answer_dict[challenge_id]
+		p_est = np.array(((x1+x2)//2,(y1+y2)//2))
+		p_ans = np.array(((answer_x1+answer_x2)//2,(answer_y1+answer_y2)//2))
+
+		return np.sqrt(np.sum(np.square(p_est-p_ans)))
+
+		
+
+	def recordResult(self, file_name:str, challenge_id:str, data:Data, result:float, timediff:float):
+		with open(file_name, "w") as f:
+			f.write("file_path,distance,position,ans_position,time\n")
+			file_path = challenge_id
+			self.answer_dict[challenge_id]
+			position_str = "-".join(map(str,data.position))
+			position_str_x = data.position[0]
+			position_str_y = data.position[1]
+			answer_str = "-".join(map(str,self.answer_dict[challenge_id]))
+
+			delta_str = f"{result:.3f}"
+
+			f.write(f"{file_path},{delta_str},{position_str},{answer_str},{timediff.total_seconds()}\n")
+
+		
+	def getAnswerColor(self, img_name):
+		w=5
+		h=5
+		answer_img_name = str(self.captcha_answer_dir.joinpath(f"{img_name}"))
+		print(answer_img_name)
+		answer_img = cv2.imread(answer_img_name)
+		answer_img = cv2.cvtColor(answer_img, cv2.COLOR_BGR2RGB)
+		x1, y1, x2, y2 = self.answer_dict[img_name]
+		c_x = (x1+x2)//2
+		c_y = (y1+y2)//2
+		avg = np.mean(answer_img[c_y-h:c_y+h, c_x-w:c_x+w], axis=0)
+		avg = np.mean(avg, axis=0)
+		r, g, b = avg.astype(int)
+		answer_color = color.Color([r,g,b])
+		return answer_color
+
+	def getAnswerDict(self, path: pathlib.Path):
+		answer_json = str(path.joinpath("answer.json"))
+		return json.load(open(answer_json, 'r'))
+
+C2CAPTCHA_SERVER = CAPTCHA_Server(challenge_dir="./challenges/challenge_example/") #example
+
+@app.post("/challenge")
+async def captcha_challenge():
+	return C2CAPTCHA_SERVER.sendChallenge()
+
+
+@app.post("/response")
+async def captcha_response(data: Data):
+	return C2CAPTCHA_SERVER.validateResponse(data)
+

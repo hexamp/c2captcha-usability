@@ -1,0 +1,9 @@
+click
+fastapi
+h11
+numpy
+opencv-python
+pydantic
+starlette
+typing-extensions
+uvicorn
