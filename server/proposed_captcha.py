@@ -45,7 +45,7 @@ class CAPTCHA_Server():
 		self.image_ext = "jpg"
 		self.answer_dict = self.getAnswerDict(self.captcha_answer_dir)
 
-		with open("./settings.yaml") as f:
+		with open("./settings.yaml", encoding='utf-8') as f:
 			data = yaml.safe_load(f)
 		
 		filter_data = data["filter"]
