@@ -3,14 +3,17 @@ from starlette.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List
 
+from collections import deque
 import numpy as np
-import color
+import colorlib
+import filterlib
 import uuid
 import datetime
 import cv2
 import pathlib
 import random
 import json
+import yaml
 from base64 import b64encode
 
 app = FastAPI()
@@ -30,11 +33,10 @@ class Data(BaseModel):
 
 
 class CAPTCHA_Server():
-	def __init__(self, challenge_dir="./challenges/challenge_origin/"):
+	def __init__(self, challenge_dir="./challenges/challenge_example/"):
 		dir = pathlib.Path(challenge_dir)
 		self.captcha_image_dir = dir.joinpath("images")
-		self.captcha_images = list(self.captcha_image_dir.iterdir())
-		random.shuffle(self.captcha_images)
+		self.captcha_images = self.init_challenge_queues()
 		self.captcha_mapping = {}
 		self.captcha_answer_dir = dir.joinpath("answers")
 		self.captcha_result_dir = dir.joinpath("previous","results")
@@ -43,12 +45,30 @@ class CAPTCHA_Server():
 		self.image_ext = "jpg"
 		self.answer_dict = self.getAnswerDict(self.captcha_answer_dir)
 
+		with open("./settings.yaml") as f:
+			data = yaml.safe_load(f)
+		
+		filter_data = data["filter"]
+		self.filter = filterlib.Filter(
+			chroma=filter_data["chroma"],
+			value=filter_data["value"],
+			alpha=filter_data["alpha"],
+			tile=filter_data["tile"],
+			grid=filter_data["grid"]
+		)
+
+	def init_challenge_queues(self):
+		images = list(self.captcha_image_dir.iterdir())
+		random.shuffle(images)
+		return deque(images)
+
 	def sendChallenge(self):
-		img_path = self.captcha_images.pop()
 		if len(self.captcha_images) == 0:
-			self.captcha_images = list(self.captcha_image_dir.iterdir())
-			random.shuffle(self.captcha_images)
-		with open(str(img_path), 'rb') as f:
+			self.captcha_images = self.init_challenge_queues()
+		img_path = self.captcha_images.pop()
+		captcha_img_path = self.filter.getCAPTCHAImage(img_path, self.captcha_answer_dir)
+		
+		with open(str(captcha_img_path), 'rb') as f:
 			blob_data = b64encode(f.read())
 			captcha_id = str(uuid.uuid4())
 			img_name = img_path.name
@@ -74,16 +94,16 @@ class CAPTCHA_Server():
 		if diff.seconds > 60.0:
 			return {"result" : "99.999"}
 		
-		estimate_color = color.Color(data.color)
+		estimate_color = colorlib.Color(data.color)
 		delta = self.validateAnswer(estimate_color, answer_color)
 		result_file = str(self.captcha_result_dir.joinpath(f"{data.uuid}"))
 		self.recordResult(result_file, img_path, challenge_id, (estimate_color, answer_color), data, delta, diff.total_seconds())
 		return {"result" : delta}
 	
-	def validateAnswer(self, response: color.Color, answer: color.Color):
+	def validateAnswer(self, response: colorlib.Color, answer: colorlib.Color):
 		return response.delta2000(answer)
 
-	def recordResult(self, file_name:str, img_path:str, challenge_id:int, color_tuple: tuple[color.Color], data:Data, result:float, timediff:float):
+	def recordResult(self, file_name:str, img_path:str, challenge_id:int, color_tuple: tuple[colorlib.Color], data:Data, result:float, timediff:float):
 		with open(file_name, "w") as f:
 			f.write("file_path,estimate_color,position,answer_color,delta,time\n")
 			file_path = challenge_id
@@ -108,7 +128,7 @@ class CAPTCHA_Server():
 		avg = np.mean(answer_img[c_y-h:c_y+h, c_x-w:c_x+w], axis=0)
 		avg = np.mean(avg, axis=0)
 		r, g, b = avg.astype(int)
-		answer_color = color.Color([r,g,b])
+		answer_color = colorlib.Color([r,g,b])
 		return answer_color
 
 	def getAnswerDict(self, path: pathlib.Path):
