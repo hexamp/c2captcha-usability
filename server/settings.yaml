@@ -1,0 +1,14 @@
+filter:
+  #彩度
+  chroma: 70
+  # 明度
+  value: 100
+  
+  # 画像とフィルターの合成比率 base : grad = 1-alpha : alpha
+  alpha: 0.7
+  
+  #タイル
+  tile: 40
+  
+  #グリッド状に分割する際のサイズ(n✕n)
+  grid: 20
