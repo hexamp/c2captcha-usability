@@ -36,6 +36,9 @@ class CAPTCHA_Server():
 	def __init__(self, challenge_dir="./challenges/challenge_example/"):
 		dir = pathlib.Path(challenge_dir)
 		self.captcha_image_dir = dir.joinpath("images")
+		self.generated_captcha_dir = dir.joinpath("generated")
+		if not self.generated_captcha_dir.exists():
+			self.generated_captcha_dir.mkdir(parents=True)
 		self.captcha_images = self.init_challenge_queues()
 		self.captcha_mapping = {}
 		self.captcha_answer_dir = dir.joinpath("answers")
@@ -66,7 +69,7 @@ class CAPTCHA_Server():
 		if len(self.captcha_images) == 0:
 			self.captcha_images = self.init_challenge_queues()
 		img_path = self.captcha_images.pop()
-		captcha_img_path = self.filter.getCAPTCHAImage(img_path, self.captcha_answer_dir)
+		captcha_img_path = self.filter.getCAPTCHAImage(img_path, self.generated_captcha_dir)
 		
 		with open(str(captcha_img_path), 'rb') as f:
 			blob_data = b64encode(f.read())
@@ -126,8 +129,7 @@ class CAPTCHA_Server():
 	def getAnswerColor(self, img_name):
 		w=5
 		h=5
-		answer_img_name = str(self.captcha_answer_dir.joinpath(f"{img_name}"))
-		print(answer_img_name)
+		answer_img_name = str(self.captcha_image_dir.joinpath(f"{img_name}"))
 		answer_img = cv2.imread(answer_img_name)
 		answer_img = cv2.cvtColor(answer_img, cv2.COLOR_BGR2RGB)
 		x1, y1, x2, y2 = self.answer_dict[img_name]
