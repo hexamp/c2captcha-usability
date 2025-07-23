@@ -2,13 +2,7 @@ import os
 import sys
 import cv2
 import numpy as np
-import matplotlib
-import matplotlib.pyplot as plt
-from pprint import pprint
-from natsort import natsorted
 import math
-from glob import glob
-from copy import copy
 from statistics import median, mean
 from pathlib import Path
 
